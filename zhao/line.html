@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <script src="https://d3js.org/d3.v5.min.js"></script>
+    <title>Document</title>
+</head>
+<body>
+    <svg width="1250" height="920" id="mainsvg" class="svgs" style="background-color: #ffffff;"></svg>
+
+    <script>
+        const svg = d3.select('#mainsvg');
+        const width = +svg.attr('width');
+        const height = +svg.attr('height');
+        const margin = {top: 100, right: 120, bottom: 100, left: 120};
+        const innerWidth = width - margin.left - margin.right;
+        const innerHeight = height - margin.top - margin.bottom;
+        let alldates=[]
+        let allkeys=[]
+        let sequantial=[]
+        let xScale, yScale;
+        const xAxisLabel = '时间';
+        const yAxisLabel = '现有确诊';
+        const xValue = (datum) => {return datum['日期']};
+        const yValue = (datum) => {return datum['现有确诊']};
+        let aduration = 1000;
+
+
+        const renderinit=(data)=>{
+            xScale = d3.scaleTime()
+            .domain([d3.min(data,xValue),d3.max(data,xValue)])
+            .range([0,innerWidth])
+            .nice();
+
+            yScale = d3.scaleLinear()
+            .domain(d3.extent(data,yValue).reverse())
+            .range([0,innerHeight])
+            .nice();
+
+            const g=svg.append('g')
+            .attr('transform', `translate(${margin.left}, ${margin.top})`)
+            .attr('id', 'maingroup');
+
+            const yAxis = d3.axisLeft(yScale).tickSize(-innerWidth).tickPadding(10);
+            const xAxis = d3.axisBottom(xScale).tickSize(-innerWidth).tickPadding(10)
+            
+            let yAxisGroup=g.append('g').call(yAxis).attr('id','yAxisGroup')
+            let xAxisGroup=g.append('g').call(xAxis).attr('id','xAxisGroup').attr('transform', `translate(${0}, ${innerHeight})`)
+            
+            yAxisGroup.append('text').attr('font-size','2em')
+            .attr('transform',`rotate(-90)`)
+            .attr('x', -innerHeight / 2)
+            .attr('y', -60)
+            .attr('fill', '#333333')
+            .text(yAxisLabel)
+            .attr('text-anchor', 'middle')
+            yAxisGroup.selectAll('.domain').remove();
+
+            xAxisGroup.append('text')
+            .attr('font-size', '2em')
+            .attr('y', 60)
+            .attr('x', innerWidth / 2)
+            .attr('fill', '#333333')
+            .text(xAxisLabel);
+            xAxisGroup.selectAll('.domain').remove();
+
+            g.append('path').attr('id', 'alterPath');
+        }
+
+        const renderUpdate=(seq)=>{
+            const g = d3.select('#maingroup')
+
+            const line =d3.line()
+                .x(d=>xScale(xValue(d)))
+                .y(d=>yScale(yValue(d)))
+                .curve(d3.curveCardinal.tension(0.5))
+
+            d3.select('#alterPath').datum(seq)
+            .attr('class', 'datacurve')
+            .attr('stroke','green')
+            .attr('fill','none')
+            .attr("stroke-width", 2.5)
+            .transition().duration(2000)
+            .attr("d", line)
+        }
+
+        d3.csv('../static/data/province.csv').then((res) => {
+            let data = res.filter(datum => {return datum['省份'] !== '总计'}); 
+            data = data.filter(datum => {return datum['省份'] !== '湖北'}); 
+
+            alldates = Array.from(new Set( data.map( d => xValue(d) ) ));
+            data.forEach(item => {
+                item['现有确诊'] = +(item['现有确诊']);
+                item['日期'] = new Date(item['日期']);
+
+                if(!allkeys.includes(item['省份'])){
+                    allkeys.push(item['省份'])
+                }
+            });
+            
+            alldates.sort((a,b)=>new Date(a)-new Date(b))
+            
+            let provinces = {};
+            allkeys.forEach( key => {provinces[key] = []} );
+            data.forEach( d => { provinces[d['省份']].push(d) } )
+            allkeys.forEach( key => provinces[key].sort(function(a,b){
+                return new Date(a['日期']) - new Date(b['日期']);
+            })); 
+            console.log(data,alldates,allkeys);
+            renderinit(data)
+
+            let c = 0;
+            let intervalId = setInterval( () => {
+                if( c >= allkeys.length ){
+                    clearInterval(intervalId);
+                }else{
+                    let key = allkeys[c];
+                    renderUpdate(provinces[key]);
+                    c = c + 1;
+                }
+            }, aduration)
+        }).catch((err) => {
+            console.log(err);
+        });
+    </script>
+</body>
+</html>

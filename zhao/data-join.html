@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <script src="https://d3js.org/d3.v5.min.js"></script>
+    <title>Document</title>
+</head>
+<body>
+    <svg width="1250" height="920" id="mainsvg" class="svgs" style="background-color: #ffffff;"></svg>
+
+    <script>
+        const svg = d3.select('#mainsvg');
+        const width = +svg.attr('width');
+        const height = +svg.attr('height');
+        const margin = {top: 100, right: 120, bottom: 100, left: 120};
+        const innerWidth = width - margin.left - margin.right;
+        const innerHeight = height - margin.top - margin.bottom;
+        let alldates=[]
+        let sequantial=[]
+        let xScale, yScale;
+        const xAxisLabel = '累计确诊人数（对数）';
+        const yAxisLabel = '新增人数（对数）';
+        let xValue = d => Math.log(d['确诊人数'] + 1);
+        let yValue = d => Math.log(d['新增确诊'] + 1); 
+        let aduration = 1000;
+
+        var color = {
+            "武汉":"#ff1c12",
+            "黄石": "#de5991",
+            "十堰": "#759AA0",
+            "荆州": "#E69D87",
+            "宜昌": "#be3259",
+            "襄阳": "#EA7E53",
+            "鄂州": "#EEDD78",
+            "荆门": "#9359b1",
+            "孝感": "#47c0d4",
+            "黄冈": "#F49F42",
+            "咸宁": "#AA312C",
+            "恩施州": "#B35E45",
+            "随州": "#4B8E6F",
+            "仙桃": "#ff8603",
+            "天门": "#ffde1d",
+            "潜江": "#1e9d95",
+            "神农架": "#7289AB"
+        }
+
+        const renderinit=(data)=>{
+            xScale = d3.scaleLinear()
+            .domain([d3.min(data,xValue),d3.max(data,xValue)])
+            .range([0,innerWidth])
+            .nice();
+
+            yScale = d3.scaleLinear()
+            .domain(d3.extent(data,yValue).reverse())
+            .range([0,innerHeight])
+            .nice();
+
+            const g=svg.append('g')
+            .attr('transform', `translate(${margin.left}, ${margin.top})`)
+            .attr('id', 'maingroup');
+
+            const yAxis = d3.axisLeft(yScale).tickSize(-innerWidth).tickPadding(10);
+            const xAxis = d3.axisBottom(xScale).tickSize(-innerWidth).tickPadding(10);
+
+            let yAxisGroup=g.append('g').call(yAxis).attr('id','yAxisGroup')
+            yAxisGroup.append('text').attr('font-size','2em')
+            .attr('transform',`rotate(-90)`)
+            .attr('x', -innerHeight / 2)
+            .attr('y', -60)
+            .attr('fill', '#333333')
+            .text(yAxisLabel)
+            .attr('text-anchor', 'middle')
+            yAxisGroup.selectAll('.domain').remove();
+
+            let xAxisGroup=g.append('g').call(xAxis).attr('id','xAxisGroup').attr('transform', `translate(${0}, ${innerHeight})`)
+            xAxisGroup.append('text')
+            .attr('font-size', '2em')
+            .attr('y', 60)
+            .attr('x', innerWidth / 2)
+            .attr('fill', '#333333')
+            .text(xAxisLabel);
+            xAxisGroup.selectAll('.domain').remove();
+        }
+
+        const renderUpdate=(seq)=>{
+            const g = d3.select('#maingroup')
+
+            let circleupdates = g.selectAll('circle').data(seq,d=>d['地区'])
+            let circleenter = circleupdates.enter().append('circle')
+                .attr('cx', d => xScale(xValue(d)))
+                .attr('cy', d => yScale(yValue(d)))
+                .attr('r', 10)
+                .attr('fill', d => color[d['地区']])
+                .attr('opacity', 0.8)
+
+            circleupdates.merge(circleenter)
+            .transition().ease(d3.easeLinear).duration(aduration)
+            .attr('cx', d => xScale(xValue(d)))
+            .attr('cy', d => yScale(yValue(d)));
+        }
+
+        d3.csv('../static/data/hubeinxt.csv').then((res) => {
+            let data=res.filter(d=>d['地区']!=='总计')
+            data.forEach(item => {
+                item['确诊人数']=+(item['确诊人数'])
+                item['新增确诊']=+(item['新增确诊'])
+
+                if(!alldates.includes(item['日期'])){
+                    alldates.push(item['日期'])
+                }
+            });
+            alldates.sort((a,b)=>new Date(a)-new Date(b))
+            console.log(data,alldates);
+
+            alldates.forEach(d=>sequantial.push([]))
+            data.forEach(d=>{
+                let index = alldates.indexOf(d['日期'])
+                sequantial[index].push(d)
+            })
+            renderinit(data)
+
+            let c = 0;
+            let intervalId = setInterval( () => {
+                if( c >= alldates.length ){
+                    clearInterval(intervalId);
+                }else{
+                    renderUpdate(sequantial[c]);
+                    c = c + 1;
+                }
+            }, aduration)
+        }).catch((err) => {
+            
+        });
+    </script>
+</body>
+</html>

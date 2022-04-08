@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <script src="https://d3js.org/d3.v5.min.js"></script>
+    <script src="../static/js/library/moment.min.js"></script>
+    <script src="../static/js/axes.js"></script>
+    <title>Document</title>
+</head>
+<body>
+    <svg width="1250" height="920" id="mainsvg" class="svgs"></svg>
+
+    <script>
+        const svg = d3.select('#mainsvg');
+        const width = +svg.attr('width');
+        const height = +svg.attr('height');
+        const margin = {top: 100, right: 120, bottom: 100, left: 120};
+        const innerWidth = width - margin.left - margin.right;
+        const innerHeight = height - margin.top - margin.bottom;
+        const g = svg.append('g').attr('id', 'maingroup')
+        .attr('transform', `translate(${margin.left}, ${margin.top})`); 
+
+        const naiveData = [
+            {month: new Date(2015, 0, 1), apples: 3840, bananas: 1920, cherries: 960, dates: 400},
+            {month: new Date(2015, 1, 1), apples: 1600, bananas: 1440, cherries: 960, dates: 400},
+            {month: new Date(2015, 2, 1), apples:  640, bananas:  960, cherries: 640, dates: 400},
+            {month: new Date(2015, 3, 1), apples:  320, bananas:  480, cherries: 640, dates: 400}
+        ];
+        const naiveKeys = ["apples", "bananas", "cherries", "dates"];
+
+        const naiveStack =d3.stack().keys(naiveKeys).order(d3.stackOrderNone)(naiveData)
+        console.log(naiveStack);
+
+        const xValue = d=>moment(d.month).format('YYYY-MM-DD')
+        const xScale=d3.scaleBand().domain(naiveData.map(xValue)).range([0,innerWidth]).padding(0.5);
+
+        const yScale=d3.scaleLinear().domain([0,d3.max(naiveStack,d=>d3.max(d, subd => subd[1]))]).range([innerHeight,0]).nice();
+
+        naiveAxes();
+
+        const color = d3.scaleOrdinal()
+        .domain(naiveKeys)
+        .range(d3.schemeSet3)
+
+        // // start to do data-join; 
+        g.selectAll('.datagroup').data(naiveStack).join('g').attr('class','datagroup').attr('fill',d=>color(d.key))
+        .selectAll('.datarect').data(d=>d).join('rect').attr('class','datarect')
+        .attr('x',d=>xScale(xValue(d.data)))
+        .attr('y',d=>yScale(d[1]))
+        .attr('height',d=>yScale(d[0])-yScale(d[1]))
+        .attr('width', xScale.bandwidth()); 
+
+        d3.selectAll('.tick text').attr('font-size', '2em');
+        d3.selectAll('#xaxis text').attr('y', '10')
+    </script>
+</body>
+</html>

@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="../static/css/earth.css">
+    <link rel="stylesheet" href="../static/css/d3tip.css">
+    <script src="https://d3js.org/d3.v5.min.js"></script>
+    <script src="../static/js/topojson.js"></script>
+    <script src="../static/js/library/d3-tip.js"></script>
+    <title>Document</title>
+</head>
+<body>
+    <svg width="1200" height="800" id="mainsvg" class="svgs"></svg>
+
+    <script>
+        let svg = d3.select('svg');
+        const width = +svg.attr('width');
+        const height = +svg.attr('height');
+        const margin = {top: 60, right: 60, bottom: 10, left: 60};
+        const innerWidth = width - margin.left - margin.right;
+        const innerHeight = height - margin.top - margin.bottom;
+        const g = svg.append('g').attr('id', 'maingroup')
+        .attr('transform', `translate(${margin.left}, ${margin.top})`);
+
+        const projection = d3.geoNaturalEarth1()
+        const geo = d3.geoPath().projection(projection)
+
+        const tip =d3.tip().attr('class','d3-tip').html(d=>d.properties.name)
+        svg.call(tip)
+        let lastid = undefined;
+
+        let worldmeta
+        d3.json('../static/data/countries-110m.json').then(data=>{
+            // convert topo-json to geo-json; 
+            worldmeta = topojson.feature(data, data.objects.countries);
+            console.log(data,worldmeta);
+
+            projection.fitSize([innerWidth,innerHeight],worldmeta)
+            const path = g.selectAll('path')
+                .data(worldmeta.features,d=>d.properties.name)
+                // .enter().append('path')
+                .join('path')
+                .attr('d',geo)
+                .attr('stroke','black')
+                .attr('stroke-width',1)
+                .attr('fill','skyblue')
+                .on('mouseover',function(){
+                    d3.select(this).attr('opacity',0.5)
+                    .attr("stroke","white")
+                    .attr("stroke-width", 2);
+                })
+                .on('mouseout',function(){
+                    d3.select(this).attr('opacity',1)
+                    .attr('stroke','black')
+                    .attr('stroke-width',1)
+                })
+                .on('click',function(d){
+                    tip.show(d)
+                })
+                .on('contextmenu', function(d){
+                    d3.event.preventDefault();
+                    if(lastid !== d.properties.name){
+                        tip.show(d)
+                        lastid = d.properties.name;
+                    }else{
+                        tip.hide(d)
+                    }
+                })
+        })
+    </script>
+</body>
+</html>
