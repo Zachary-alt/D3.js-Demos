@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <script src="https://d3js.org/d3.v5.min.js"></script>
+    <title>Document</title>
+</head>
+<body>
+    <svg width="1000" height="920" id="mainsvg" class="svgs"></svg>
+
+    <script>
+        const svg = d3.select('#mainsvg');
+        const width = +svg.attr('width');
+        const height = +svg.attr('height');
+        const margin = {top: 100, right: 120, bottom: 100, left: 120};
+        const innerWidth = width - margin.left - margin.right;
+        const innerHeight = height - margin.top - margin.bottom;
+        const g = svg.append('g').attr('id', 'maingroup')
+        .attr('transform', `translate(${margin.left}, ${margin.top})`); 
+        let root
+
+        const render = ()=>{
+            g.selectAll('path').data(root.links()).join('path')
+            .attr('d',d3.linkHorizontal().x(d=>d.y).y(d=>d.x))
+            .attr('fill','none')
+            .attr('stroke','black')
+        }
+
+        d3.json('../static/data/games.json').then(data=>{
+            root=d3.hierarchy(data)
+            root=d3.tree().size([innerHeight,innerWidth])(root)
+            console.log(data,root,root.links());
+            render()
+        })
+    </script>
+</body>
+</html>
